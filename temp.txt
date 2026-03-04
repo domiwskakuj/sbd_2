@@ -1,0 +1,182 @@
+09
+14
+01
+05
+04
+,
+02
+08
+03
+--
+--
+,
+--
+13
+--
+12
+--
+,
+--
+07
+--
+06
+--
+,
+05
+03
+06
+00
+--
+,
+--
+04
+--
+00
+--
+,
+--
+02
+--
+01
+--
+,
+--
+15
+--
+--
+--
+,
+--
+20
+--
+--
+--
+,
+08
+16
+07
+--
+--
+,
+
+
+
+            if node.get_size() > node_size/2 and node.is_leaf():
+                print("can easily delete")
+                new_values = []
+                for val in node.values:
+                    if val != key:
+                        new_values.append(val)
+                new_values.append(0)
+                node.values = new_values
+            elif node.is_leaf():
+                print("compensation")
+                i = self.path_buffer[-2]
+                parent_node = B_tree_node(buffer.read_page(i), i)
+                test = 0
+                for i in range(0, parent_node.get_size()+1):
+                    if i == node.page_nr:
+                        if i - 1 >= 0:
+                            k = parent_node.pointers[i - 1]
+                            source_node = B_tree_node(buffer.read_page(k), k)
+                            if source_node.get_size() > node_size / 2:
+                                test = 1
+                                new_values = [parent_node.values[i-1]]
+                                for j in range(0, node.get_size()):
+                                    if node.values[j] != key:
+                                        new_values.append(node.values[j])
+                                node.values = new_values
+                                parent_node.values[i-1] = source_node.values.pop(source_node.get_size()-1)
+                                source_node.values.append(0)
+                        if i + 1 < parent_node.get_size()+1:
+                            k = parent_node.pointers[i + 1]
+                            source_node = B_tree_node(buffer.read_page(k), k)
+                            if source_node.get_size() > node_size / 2:
+                                test = 1
+                                new_values = [parent_node.values[i]]
+                                for j in range(0, node.get_size()):
+                                    if node.values[j] != key:
+                                        new_values.append(node.values[j])
+                                node.values = new_values
+                                parent_node.values[i] = source_node.values.pop(0)
+                                source_node.values.append(0)
+                        # todo - merge
+                        # todo - make node_size bigger
+                            # compensation sie nie powiodlo i merge lisci
+
+            else:               # node is not leaf
+                test = 0
+                for i in range(0, node.get_size()):
+                    if node.values[i] == key:
+                        if node.pointers[i] != 0: # greatest from smaller tree
+                            child_node = B_tree_node(buffer.read_page(node.pointers[i]), node.pointers[i])
+                            while test == 0:
+                                if child_node.is_leaf():
+                                    if child_node.get_size() > node_size/2:
+                                        node.values[i] = child_node.values[child_node.get_size() - 1]
+                                        child_node.values[child_node.get_size() - 1] = 0  # oststanie
+                                        test = 1
+                                else:
+                                    temp = child_node.pointers[child_node.get_size()]
+                                    child_node = B_tree_node(buffer.read_page(temp), temp)
+
+
+                                if child_node.get_size() > node_size/2:
+                                    # take the gratest from child node
+                                    if child_node.is_leaf():
+                                        node.values[i] = child_node.values[child_node.get_size() - 1]
+                                        child_node.values[child_node.get_size()-1] = 0 #oststanie
+                                        test = 1
+
+
+                        elif node.pointers[i+1] != 0: #
+                            child_node = B_tree_node(buffer.read_page(node.pointers[i+1]), node.pointers[i+1])
+                            if child_node.get_size() > node_size/2:
+                                # take the smallest from child node
+                                if child_node.is_leaf():
+                                    node.values[i] = child_node.values[0]
+                                    child_node.values.pop(0) #pierwsze
+                                    child_node.values.append(0)
+                                    test = 1
+                if test == 0:
+                    test = self.delete_compensation()
+                    if test == 0:
+                        self.merge()
+
+--
+15
+--
+11
+--
+00
+--
+00
+--
+00
+--
+,
+----
+0015
+----
+0011
+----
+0000
+----
+0000
+----
+0000
+----
+,
+
+----
+0015 0000
+----
+0011 0000
+----
+0000 0000
+----
+0000 0000
+----
+0000 0000
+----
+,
