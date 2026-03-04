@@ -4,7 +4,7 @@ n = 200
 max = 999
 test = []
 m = 0
-def generate(n, m, max):
+def generate(n, m, max):                                    # generate records and keys for testing
     file = open("operations.txt", "w")
     for i in range(0, max):
         test.append(0)

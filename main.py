@@ -2,20 +2,20 @@ import copy
 import random
 import generate_tests
 
-page_size : int = 9                           # 3 pointers and 2 values
-read_size = 23                                 # number of bytes in page
-node_size = 5
-number_size = 4
+page_size : int = 9                                 # nuber of elements on page
+read_size = 23                                      # number of bytes in page
+node_size = 5                                       # number of keys in b-tree node
+number_size = 4                                     # number of digits in a number
 
-records_page_size = 5
-records_read_size = 0
+records_page_size = 5                               # number of records per page
+records_read_size = 0                               # number of records on file
 
 class Record:
     def __init__(self, value, address):
         self.value = value
         self.address = address
 
-class RecordFileBuffer:
+class RecordFileBuffer:                             # buffer used for writing record to file
     def __init__(self, filename, page_count):
         self.keys = []
         self.records = []
@@ -75,7 +75,7 @@ class RecordFileBuffer:
                 ret = self.records[i]
         self.clear_state()
         return ret
-    def get_page(self, mode): #od razu parsuje
+    def get_page(self, mode):
         self.clear_state()
         if len(self.redundant_pages) > 0:
             page = self.redundant_pages[0]
@@ -111,7 +111,7 @@ class RecordFileBuffer:
         for i in range(len(self.keys)):
             if self.keys[i] == 0:
                 if record == 0:
-                    self.records[i] = "[ 2137 2137 ]"
+                    self.records[i] = "[ 2137 2137 ]" # if record is not given, a fixed value is being used
                 else:
                     self.records[i] = record
                 self.keys[i] = key
@@ -141,12 +141,7 @@ class RecordFileBuffer:
         self.write_page(chunk, page)
         self.clear_state()
 
-
-
-
-
-
-class Buffer:
+class Buffer:                                       # buffer used for writing key to b-tree structure file
     def __init__(self, file_name, page_count : int):
         self.file_name = file_name
         self.current_open_page = None
@@ -200,18 +195,14 @@ class Buffer:
             f.close()
         self.operations_counter += 1
 
-
-
-class B_tree_node:
+class B_tree_node:                                  # node in a b-tree structure
     def __init__(self, page, page_number):
         self.page_nr = page_number
         self.values = []
         self.pointers = []
         self.addresses = []
         self.root = 0
-        current_type = 0                     # data type we are reading now is a pointer :)
-        curr = 0
-        prev = 0
+        current_type = 0
         temp = 0
         temp_record = None
         if page is not None:
@@ -269,8 +260,7 @@ class B_tree_node:
             new_values.append(Record(0,0))
         self.values = new_values
         buffer.write_page(self.print_to_binary(), self.page_nr)
-        # do dokladania do noda ktory nie jest lisciem bedzie osobna funkcja
-    def is_leaf(self):
+    def is_leaf(self):                              # check if current node is a leaf
         test = 0
         for pointer in self.pointers:
             if pointer != 0:
@@ -296,7 +286,6 @@ class B_tree_node:
         count = 0
         for i in range(0, level):
             space += "\t"
-
         for i in range(self.get_size()):
             if self.pointers[i] != 0:
                 node = B_tree_node(buffer.read_page(self.pointers[i]),self.pointers[i])
@@ -310,9 +299,7 @@ class B_tree_node:
             node = B_tree_node(buffer.read_page(self.pointers[count]), self.pointers[count])
             node.print_node(level + 1)
 
-
-
-class B_tree:
+class B_tree:                                     # representation of the b-tree
     def __init__(self, buffer : Buffer):
         self.root : int = 0                         # root page number
         self.buffer : Buffer = buffer
@@ -334,7 +321,6 @@ class B_tree:
                 if val == key:
                     test = 1
                     return node.page_nr
-                    break
                 if val < key:
                     if node.pointers[i] == 0:
                         result = -1                 # key not found
@@ -354,7 +340,7 @@ class B_tree:
         if result != -1:
             return result
         else:
-            return -1                               # mam zapamietana ostatnia odczytana strone
+            return -1                               # the last read page is in memory
     def insert(self, key : int, record):
         if key == -1:
             key = self.biggest_key + 1
@@ -445,7 +431,6 @@ class B_tree:
                         if j - 1 >= 0:
                             neighbour_node = B_tree_node(buffer.read_page(parent_node.pointers[j - 1]), parent_node.pointers[j - 1])
                             if neighbour_node.get_size() > d:
-                                # ostatni
                                 node.values.insert(0, parent_node.values[j - 1])
                                 node.values.pop(-1)
                                 parent_node.values[j - 1] = neighbour_node.values.pop(neighbour_node.get_size()-1)
@@ -462,7 +447,6 @@ class B_tree:
                             neighbour_node = B_tree_node(buffer.read_page(parent_node.pointers[j + 1]),
                                                          parent_node.pointers[j + 1])
                             if neighbour_node.get_size() > d:
-                                # pierwszy
                                 node.values.insert(node.get_size(), parent_node.values[j])
                                 node.values.pop(-1)
                                 parent_node.values[j] = neighbour_node.values.pop(0)
@@ -508,7 +492,7 @@ class B_tree:
                                     node.values[node.get_size()] = neighbour_node.values[l]
                                     node.pointers[node.get_size()] = neighbour_node.pointers[l]
                                 node.pointers[node.get_size()+1] = neighbour_node.pointers[neighbour_node.get_size()]
-                                #trzeba dodac wartosc z noda wyzej
+
                                 node.values.insert(temp, parent_node.values.pop(j))
                                 parent_node.values.append(Record(0,0))
                                 parent_node.pointers.pop(j+1)
@@ -656,14 +640,14 @@ class B_tree:
                 if parent_node.get_size() < 2*d:
                     parent_node.pointers.insert(temp, new_node.page_nr)
                     parent_node.pointers.pop(-1)
-                    # nie ma przepelnienia i mozna normalnie kontynuowac
+                    # no overflow
                     test = 1
-                    t = overflown_node.values.pop(0) #zdejmujemy pierwsze bo poprzednie juz zostaly zdjete
+                    t = overflown_node.values.pop(0)
                     parent_node.add_to_node(t.value, t.address)
                     self.buffer.write_page(parent_node.print_to_binary(), parent_node.page_nr)
                     self.buffer.write_page(overflown_node.print_to_binary(), overflown_node.page_nr)
                     self.buffer.write_page(new_node.print_to_binary(), new_node.page_nr)
-                    ret = Record(0,0) # <- wyszstko jest ok, nie trzeba przesuwac sie wyzej
+                    ret = Record(0,0) # <- everything is ok, there is no need to move further up the tree
                     return ret, None
                 else:
                     ret = overflown_node.values.pop(0)
@@ -696,7 +680,7 @@ def generate_random_record():
     r2 = random.randint(0, 9999)
     res = "[ "+int_to_string(r1)+" "+int_to_string(r2)+" ]"
     return res
-def clear_tree(filename): #musi zalezec od node_size
+def clear_tree(filename):
     empty = ""
     for i in range(0, node_size):
         empty += "----\r\n"
@@ -791,7 +775,7 @@ tree.display_tree()
 
 
 
-#eksperyment
+# experiment
 generate_tests.generate(100, 0, 9999)
 gtree = None
 while True:
@@ -826,7 +810,7 @@ while True:
         buffer.reset_counter()
         file_buffer.reset_counter()
         line = input()
-        parse_command(gtree, line)
+        parse_command(tree, line)
         print("operations:")
         print(buffer.operations_counter)
         print(file_buffer.operations_counter)
